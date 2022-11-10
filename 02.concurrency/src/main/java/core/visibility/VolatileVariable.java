@@ -5,6 +5,11 @@ public class VolatileVariable {
     private static boolean nonVisibleFlag = false;
     private static volatile boolean visibleFlag = false;
 
+    /**
+     * 일반적으로 volatile 키워드를 사용해야 가시성이 확보된다.
+     * - volatile 키워드와 이전에 접근되는 코드들도 volatile 키워드를 사용하면 꼭 가시성이 확보되는 것이 아닌 모양.
+     * - while문 안에 코드가 있어야 가시성이 확보되나봄?
+     */
     static class Runnable1 implements Runnable {
 
         @Override
