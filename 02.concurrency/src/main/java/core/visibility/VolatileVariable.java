@@ -36,9 +36,10 @@ public class VolatileVariable {
         nonVisibleFlag = true;
         visibleFlag = true;
 
-        // 중요: volatile 변수로 접근하는 코드 이전에 수행된 내용은
-        // volatile 변수에 접근한 이후에서는 모두 가시성이 확보된다.
+        // 중요: volatile 변수로 접근하는 코드 이전에 수행된 내용은 volatile 변수에 접근한 이후에서는 모두 가시성이 확보된다.
         // volatile 변수인 visibleFlag 에 접근하는 코드가 실행하게 된다면
         // 그 전에 접근한 non volatile 변수인 nonVisibleFlag 변수의 가시성이 확보된다.
+
+        // 하지만 실제로 해보니 non volatile 변수의 가시성 확보는 확실하지 않다!
     }
 }
