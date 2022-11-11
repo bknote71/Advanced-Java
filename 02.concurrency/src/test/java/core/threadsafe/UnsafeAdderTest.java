@@ -4,11 +4,11 @@ import org.junit.Test;
 
 import static org.junit.Assert.*;
 
-public class NonThreadSafeTest {
+public class UnsafeAdderTest {
 
     static class AddThread extends Thread {
         public void run() {
-            NonThreadSafe.add1000();
+            UnsafeAdder.add1000();
         }
     }
 
@@ -27,13 +27,13 @@ public class NonThreadSafeTest {
         // race condition 이 발생하기 때문에 3000 임을 보장하지 못한다.
         // 즉 스레드 불안정
         // 더하는 숫자가 커질수록 기대값과 차이가 벌어진다.
-        assertNotEquals(3000, NonThreadSafe.getValue());
-        System.out.println(NonThreadSafe.getValue());
+        assertNotEquals(3000, UnsafeAdder.getValue());
+        System.out.println(UnsafeAdder.getValue());
     }
 
     static class CompareAndSetThread extends Thread {
         public void run() {
-            NonThreadSafe.compareAndAct();
+            UnsafeAdder.compareAndAct();
         }
     }
 
@@ -49,7 +49,7 @@ public class NonThreadSafeTest {
 
         Thread.sleep(1000);
 
-        assertNotEquals(30000, NonThreadSafe.getValue());
-        System.out.println(NonThreadSafe.getValue());
+        assertNotEquals(30000, UnsafeAdder.getValue());
+        System.out.println(UnsafeAdder.getValue());
     }
 }

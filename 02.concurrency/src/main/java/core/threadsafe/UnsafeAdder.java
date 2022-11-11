@@ -7,7 +7,7 @@ package core.threadsafe;
  * 
  * race condition 예: 변수에 값을 저장하는 작업이 해당 변수의 현재 값과 관련이 있다.
  */
-public class NonThreadSafe {
+public class UnsafeAdder {
     private static int value = 0;
 
     public static int getValue() {
