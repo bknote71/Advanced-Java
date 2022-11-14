@@ -22,7 +22,7 @@
 표현력: 제네릭을 활용하면 타입 정보가 주석이 아닌 타입 선언 자체에 녹아든다.
 ==> 이 2가지가 제네릭의 핵심 포인트이다.
 
-Raw Type
+# Raw Type
 - 변수 선언 시에 제네릭으로 선언되어 있는 클래스를 타입 매개변수없이 사용하는 타입이다.
 - List list = new ArrayList();
 - List list = new ArrayList<Integer>();
@@ -48,63 +48,164 @@ raw type이 사용 가능한 이유는 무엇일까?
 - 자바5 이전, 제네릭이 없었을 때 raw type을 사용하였다.
 - raw type을 허용하여 list -> List<Integer>로의 이전을 가능하게 하였다.
 
+# 타입 소거(type erase)
+- 컴파일된 코드에서는 "<타입>" (타입 정보)는 사라진다.
+- 사라진 타입 정보는 캐스팅에서 사용된다.
 
+List<Integer> ints
+- 컴파일된 코드에서는 List 이다.
+Integer v = ints.get(0);
+- 런타임시에 Integer로 캐스팅한다.
 
+# type parameter in method
+// 클래스의 T 타입 정보/파라미터는 인스턴스가 생성될 때 넘어오는 정보이다.
+class Generics<T> {
 
+    public Generics(){}
 
+    // 메서드의 T 타입은 클레스의 T 타입과는 다르다.
+    // 즉 새로 정의한 것이다.
+    public <T> Generics(T t){}
 
+    // 중요: static method
+    // static method는 클래스 정보가 로딩될 때부터 만들어지기 때문에 인스턴스가 생성될 때 넘어오는 클래스 T 타입 정보를 알 수 없다.
+    // 따라서 클래스의 타입 파라미터를 static method에서는 활용할 수 없다.
+    static <S> void print(S s){}
 
+    // S, T 타입 파라미터는 위의 모든 타입 정보와 다른 정보, 즉 새로운 타입이다!
+    <S, T> void print2(S s) {}
+}
 
+# Bounded type parameter
+- 한정적 타입 매개변수
+- 타입 파라미터의 범위를 제한할 수 있다.
 
+upper bound: "extends"
+- 최상위 경계 설정
+- 설정한 upper bound의 하위 타입, 즉 상속한 타입만 타입 파라미터로 넘길 수 있다.
+- 상위 타입으로 제한하면 상위 타입의 메서드를 사용할 수가 있게 된다.
+==> 제한한 타입의 인스턴스를 만들거나, 메서드 호출이 가능해진다.
+예)
+class MyClass<T extends Number> {
+    T[] objects;
+}
+==> T[] 는 컴파일된 코드에서 Number[]로 변환된다.
+==> 원래는 Object[] 인데, 한정적 타입 매개변수로 인해 Number[]로 변환
 
+multiple bound: type의 bound를 여러개 설정할 수 있다.
+- <T extends Number & Serializable & Cloneable & ...>
+- 이 때의 T 타입은 모든 bound의 범위를 만족시켜야 한다.
+- 즉 T 타입은 모든 bound를 상속한 타입이어야 한다
+- 이 때 클라스 타입을 가장 먼저 선언해줘야 한다. (extends 다음에 implements와 같은 이치)
+- intersection type에서 활용될 수 있다.
 
+lower bound: "super"
+- 최하위 경계 설정
+- super로 설정된 클래스가 실제 타입 파라미터를 상속해야 한다.
+class MyClass<T super Integer> {
+    T[] objects;
+}
 
+중요:
+- upper bound라는 타입의 제약 조건은 컴파일하고도 지워지지 않는다.
+- 그래서 런타임 시에 upper bound의 타입을 이용하여 인스턴스를 만들거나 메서드를 사용할 수 있게된다.
 
+# 호환성
+- 매개변수화 타입끼리의 호환성
 
+List<Integer> ints = new ArrayList<>();
+List<Number> nums = ints;
+==> compile error, 호환되지 않는 타입
+- 즉 List<Integer>는 List<Number>의 서브타입이 아니다.
+- 타입 파라미터가 상속 관계라고 하더라도 타입 파라미터가 적용된 "매개변수화 타입" 사이에서는 상속 관계가 만들어지지 않는다.
 
+ArrayList<Integer> arrList = new ArrayList<>();
+List<Integer> ints = arrList;
+- 호환이 가능하다.
+- ArrayList<Integer>는 List<Integer>의 서브타입이다.
+==> ArrayList<E>는 List<E>의 서브타입이기 때문이다!
 
+static class MyList<E, P> implements List<E> { ... }
+List<String> s1 = new MyList<String, Integer>();
+List<String> s2 = new MyList<String, String>();
+- 호환 가능
+- MyList<E, P> 는 List<E> 의 서브타입이기 때문
 
+List vs List<Object>?
+• List는 raw type 이어서 List<>의 모든 타입을 넣을 수 있다.
+- 하지만 꺼내어 사용할 때 ClassCastException이 발생할 위험이 존재한다.
+List<String> strings = new ArrayList<>();
+unsafeAdd(strings, Integer.valueOf(1));
+unsafeAdd(List list, Object o) {
+	list.add(o);
+}
+--> raw type은 타입 안정성을 잃는다.
+• List<Object> 에는 List<String>을 넣을 수 없다.
 
+궁굼증:
+class MyClass<E extends Number> {}
+class MySubClass<E extends Number> extends MyClass<E>{}
 
+MyClass<Number> = new MyClass<Integer>();
+MyClass<Number> = new MySubClass<Integer>();
+- 허용이 될 것인가
 
+# 한정적 와일드 카드
+- <? extends UPPERBOUND>
 
+PECS: Producer-Extends, Consumer-Super
+- 무언가를 가져와서 쌓는 과정
 
+Producer-Extends
+- Producer(생산자): 무언가를 가져와서 쌓는 과정
+- Object의 컬렉션에 Number나 Integer를 넣을 수 있다.
+- Number의 컬렉션에 Integer를 넣을 수 있다.
+- 예)
+produce(List<? extends Number> src){
+    for(Number n: src) {
+        push(n);
+    }
+}
 
+Consumer-Super
+- Consumer(소비자): 쌓은 무언가를 다른 곳에 넘겨서 소비하는 과정
+- Integer의 컬렉션의 객체를 꺼내서 Number의 컬렉션에 담을 수 있다.
+- Number나 Integer의 컬렉션의 객체를 꺼내서 Object의 컬렉션에 담
+을 수 있다.
 
+consume(Collection<? super Integer> dst) {
+    while(!myContainer.isEmpty()) {
+        dst.add(pop());
+    }
+}
 
+Comparator와 Comparable은 소비자
+- Comparable을 직접 구현하지 않고, 직접 구현한 다른 타입을 확장한 타입을 지원하려면 와일드카드가 필요하다.
+- ? super
+- ScheduledFuture는 Comparable을 직접 구현하지 않았지만, 그 상위 타입 (Delayed)이 구현하고 있다.
 
+결론: 한정적 와일드카드를 사용해 API 유연성을 높일 수 있다.
 
+와일드카드 활용 팁
+- 메서드 선언에 타입 매개변수가 한 번만 나오면 와일드카드로 대체하라.
+- 한정적 타입이라면 한정적 와일드카드로
+- 비한정적 타입이라면 비한정적 와일드카드로
 
+주의!
+• 비한정적 와일드카드(?)로 정의한 타입에는 null을 제외한 아무것도 넣을 수 없
+다.
+- 타입 캡처를 해야하는데 무슨 타입을 모르기 때문에!
 
+Set vs Set<?> ?
+- 로타입은 타입 안정성을 잃는다: Set에는 아무 타입이나 넣을 수 있다. 하지만 꺼낼 때 문제가 된다.
+- set.add("abc"); set.add(1);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+- 와일드 카드는 어떠한 타입이든 한 종류의 타입만 다룬다.
+- Set<?>: 어떤 타입이든 담을 수 있는 범용적인 매개변수화 Set 타입
+- 비한정적 와일드 카드(?) 는 타입 정보를 이용할 수 없기 때문에 특정 컨테이너에 값을 추가할 수가 없다.
+--> 오로지 null만 넣을 수 있다.
+--> set.add(null)
+--> 굉장한 안정성
 
 
 
