@@ -102,9 +102,7 @@ multiple bound: type의 bound를 여러개 설정할 수 있다.
 lower bound: "super"
 - 최하위 경계 설정
 - super로 설정된 클래스가 실제 타입 파라미터를 상속해야 한다.
-class MyClass<T super Integer> {
-    T[] objects;
-}
+- <T super Integer>: 메서드에만 설정 가능
 
 중요:
 - upper bound라는 타입의 제약 조건은 컴파일하고도 지워지지 않는다.
@@ -142,19 +140,12 @@ unsafeAdd(List list, Object o) {
 --> raw type은 타입 안정성을 잃는다.
 • List<Object> 에는 List<String>을 넣을 수 없다.
 
-궁굼증:
-class MyClass<E extends Number> {}
-class MySubClass<E extends Number> extends MyClass<E>{}
-
-MyClass<Number> = new MyClass<Integer>();
-MyClass<Number> = new MySubClass<Integer>();
-- 허용이 될 것인가
 
 # 한정적 와일드 카드
 - <? extends UPPERBOUND>
 
 PECS: Producer-Extends, Consumer-Super
-- 무언가를 가져와서 쌓는 과정
+- 무언가를 가져와서 내부에 쌓고 내부에 쌓인 것들을 통해 소비하는 것
 
 Producer-Extends
 - Producer(생산자): 무언가를 가져와서 쌓는 과정
@@ -170,8 +161,7 @@ produce(List<? extends Number> src){
 Consumer-Super
 - Consumer(소비자): 쌓은 무언가를 다른 곳에 넘겨서 소비하는 과정
 - Integer의 컬렉션의 객체를 꺼내서 Number의 컬렉션에 담을 수 있다.
-- Number나 Integer의 컬렉션의 객체를 꺼내서 Object의 컬렉션에 담
-을 수 있다.
+- Number나 Integer의 컬렉션의 객체를 꺼내서 Object의 컬렉션에 담을 수 있다.
 
 consume(Collection<? super Integer> dst) {
     while(!myContainer.isEmpty()) {
@@ -183,10 +173,16 @@ Comparator와 Comparable은 소비자
 - Comparable을 직접 구현하지 않고, 직접 구현한 다른 타입을 확장한 타입을 지원하려면 와일드카드가 필요하다.
 - ? super
 - ScheduledFuture는 Comparable을 직접 구현하지 않았지만, 그 상위 타입 (Delayed)이 구현하고 있다.
+예)
+상속 관계: B -> A -> Comparable<A>
+<E extends Comparable<? super E>>
+- E에 B타입이 들어갈 수 있다.
+- 왜냐하면 B타입의 super type인 A는 Comparable<A>를 상속하고 있기 때문에 결과적으로 B타입은 Comparable<A>타입을 상속하는 것과 동일
+==> <B extends Comparable<A>> 해당 표현에 적합하다.
 
 결론: 한정적 와일드카드를 사용해 API 유연성을 높일 수 있다.
 
-와일드카드 활용 팁
+와일드카드 활용 팁 (중요!!!!!!!!!!!!!!)
 - 메서드 선언에 타입 매개변수가 한 번만 나오면 와일드카드로 대체하라.
 - 한정적 타입이라면 한정적 와일드카드로
 - 비한정적 타입이라면 비한정적 와일드카드로
