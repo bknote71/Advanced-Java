@@ -180,7 +180,9 @@ Comparator와 Comparable은 소비자
 - 왜냐하면 B타입의 super type인 A는 Comparable<A>를 상속하고 있기 때문에 결과적으로 B타입은 Comparable<A>타입을 상속하는 것과 동일
 ==> <B extends Comparable<A>> 해당 표현에 적합하다.
 
-결론: 한정적 와일드카드를 사용해 API 유연성을 높일 수 있다.
+결론:
+- 한정적 와일드카드를 사용해 API 유연성을 높일 수 있다.
+- T 같은 명시적인 타입 파라미터를 사용하면 api 내부 설계가 노출될 수도 있다.
 
 와일드카드 활용 팁 (중요!!!!!!!!!!!!!!)
 - 메서드 선언에 타입 매개변수가 한 번만 나오면 와일드카드로 대체하라.
@@ -191,6 +193,7 @@ Comparator와 Comparable은 소비자
 • 비한정적 와일드카드(?)로 정의한 타입에는 null을 제외한 아무것도 넣을 수 없
 다.
 - 타입 캡처를 해야하는데 무슨 타입을 모르기 때문에!
+- 비한정적 와일드카드는 메서드 범위 내에서 사용할 수 없다.
 
 Set vs Set<?> ?
 - 로타입은 타입 안정성을 잃는다: Set에는 아무 타입이나 넣을 수 있다. 하지만 꺼낼 때 문제가 된다.
@@ -230,4 +233,157 @@ type witness, explicit type argument: 타입 추론이 안되면 직접적으로
 - method(List<String>list);
 - method(Collections.emptyList());
 - 매개변수의 타입을 기반으로 인자의 타입을 추론하는 것.
+
+# type safe heterogeneous container (타입 안전 이종 컨테이너)
+- 타입 안전 이종 컨테이너: 한 타입의 객체만 담을 수 있는 컨테이너가 아니라 여러 다른 타입 (이종)을 담을 수 있는 타입 안전한 컨테이너.
+- 타입 토큰(Class<>, class 리터럴, 다 같은 용어)을 사용한 타입 안전 이종 컨테이너
+- 타입 토큰: String.class, Class<String>
+- 타입 안전 이종 컨테이너 구현 방법: 컨테이너가 아니라 “키”를 매개변수화 하라!
+
+this.map.put(Objects.requireNonNull(clazz), o);
+- container.put((Class)String.class, 123);
+--> Class는 타입 정보가 없는 raw type 이다. 따라서 아무런 타입이 value 로 들어갈 수 있다.
+--> 즉 key인 clazz는 실제타입인 String.class이지만 타입정보 T가 없기 때문에 아무런 value나 들어갈 수 있는 문제가 발생한다.
+
+- 막을 수 없는 문제이다.
+- 최대한 빨리 exception을 발생시키자
+this.map.put(Objects.requireNonNull(clazz), clazz.cast(o));
+--> casting 할 때 예외가 터진다.
+
+한정적 타입 토큰
+- 한정적 타입 토큰을 사용한다면, 이종 컨테이너에 사용할 수 있는 타입을 제한할 수 있다.
+-  AnnotatedElement <T extends Annotation> T getAnnotation(Class<T> annotationClass);
+
+# super type token
+- 기존 방식으로는 런타임 때 타입 정보 T를 알아낼 수 없다.
+- 타입 토큰에서 제네릭 타입 정보를 이용할 수 없다.
+- List<String>.class 같은 코드를 작성할 수 없다.
+
+수퍼 타입 토큰?
+- 런타임 때 타입 정보를 알아내어, 활용하기 위함이다.
+- 예) 매개변수로 활용
+
+<T>
+- 리플렉션을 사용해도 런타임 때 제네릭 타입 정보를 알 수 없다.
+- s.getClass().getDeclaredField("필드명").getType();
+==> Object 타입이다.
+
+어떻게 해야 제네릭 타입 정보를 얻을 수 있을까?
+- 상속을 이용
+
+  class Sub extends Sup<String> {}
+  Sub b = new Sub();
+  Type t = b.getClass().getGenericSuperclass();
+  ParameterizedType ptype = (ParameterizedType) t;
+
+  ptype.getActualTypeArguments();
+  ==> 부모의 제네릭 타입 정보를 얻을 수 있다.
+
+class Sub extends Sup<List<String>> {}
+- 중첩된 제네릭 타입의 정보도 알 수 있다.
+
+Local Class:
+- 클래스의 스코프를 하나의 메서드로 제한, 메서드 안에서 클래스 정의
+- 메서드 안에서만 사용 가능
+
+void main() {
+	class Sub extends Sup<List<String>>{}
+}
+
+로컬 클래스에서 이름을 생략할 수 있다
+==> 익명 클래스(anonymous)
+- 익명 클래스는 로컬 클래스에 포함됨
+
+Sup b = new Sup<List<String>>(){};
+- Sup<List<String>> 클래스를 "상속한" 익명 클래스
+
+Type t = (new Sup<List<String>>(){}).getClass().getGenericSuperclass();
+ParameterizedType ptype = (ParameterizedType) t;
+
+정리: 런타임시에 제네릭 타입 정보 얻는 방법
+- sub 클래스를 만들면서 super 클래스의 타입을 지정
+- 로컬, 익명 클래스도 이용 가능
+
+static class TypeReference<T> { // Sup
+	Type type;
+
+	public TypeReference() {
+		Type stype = getClass().getGenericsSuperclass();
+		if(stype instanceof ParameterizedType) {
+			this.type = (ParameterizedType)stype.getActualTypeArguments()[0];
+		}
+		else throw new RuntimeException();
+	}
+}
+
+- 상속, 익명 클래스 이용
+TypeReference t = new TypeReference<String>(){};
+t.type;
+
+Type
+- String, List<String>, .... 같은 것이 type이 된다.
+- Class 로 캐스팅이 가능함.
+- ex. (Class<T>tr.type).cast(map.get(tr));
+
+new TypeReference<Integer>(){}
+new TypeReference<String>(){}
+new TypeReference<List>(){}
+new TypeReference<List<String>>(){}
+
+정리
+- 슈퍼 타입 토큰을 이용하여 List<String> 같은 타입 정보도 매개변수로도 활용할 수 있게 되었다.
+- 타입 토큰: String.class와 같은 타입 정보(Class 클래스) + List<String>.class 과 같이 제네릭 타입이 들어간 타입 정보는 사용할 수 없다.
+- 슈퍼 타입 토큰 = "타입 정보를 감싸는 레퍼" + 슈퍼 클래스(부모 클래스)이용 (자식 -> 부모의 타입 파라미터 정보(ParameterizedType)를 알 수 있다.)
+
+참고: 익명 클래스에 대해서 equals(Object o)
+- getClass() != o.getClass(): 무조건 true 이다.
+- 익명 클래스는 무조건 부모 클래스의 상속하는 하위 클래스인데 생성할 때마다 클래스가 달라진다.
+- 즉 getClass() 는 생성할 때마다 다른 값이다. (Class<?> clazz)
+- 따라서 부모의 Class 정보를 비교하도록 한다.
+  getClass().getSuperclass() != o.getClass().getSuperclass()
+
+TypeReference<String>의 Type: Class<?> 타입 클래스
+- 타입 토큰은 제네릭 정보가 없어야 한다.
+TypeReference<List<String>> 의 Type: ParameterizedType 타입의 클래스 + getRawType은 Class 로 캐스팅 가능.
+
+Type 인터페이스
+- Class<T> 와 ParameterizedType은 Type 인터페이스를 상속한다. (둘이 다른 자식..)
+- ParameterizedType은 제네릭 타입을 감싸는 타입, ex) List<String>
+Type type = GetClass().getGenericSuperclass(); 부모가 제네릭 정보가 있는 클래스 타입이면 Type은 ParameterizedType이다.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
