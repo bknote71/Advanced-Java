@@ -351,39 +351,45 @@ Type 인터페이스
 - ParameterizedType은 제네릭 타입을 감싸는 타입, ex) List<String>
 Type type = GetClass().getGenericSuperclass(); 부모가 제네릭 정보가 있는 클래스 타입이면 Type은 ParameterizedType이다.
 
+Spring에서 만든 TypeReference(수퍼 타입 토큰)
+- ParameterizedTypeReference
 
+ParameterizedTypeReference<?> typeRef
+		= new ParameterizedTypeReference<List<Map<Set<Integer>, Object>>>(){};
+- 타입 정보를 래핑
+- typeRef.getType(); 정확한 타입 정보를 얻을 수 있다.
+- 바디를 넣어줘야 한다. ' { } '
 
+수퍼 타입 토큰은 언제 사용해야 할까?
+- 제네릭 타입 정보를 알아야 할 때
 
+- RestTemplate
+- ResponseEntity<List<User>> users = rt.exchange("http://localhost:8080", HttpMethod.GET, header정보, new ParameterizedTypeReference<List<User>>(){});
+- RestController에서 List<User> 를 직접 넘기는 것 대신에 레퍼 클래스를 넘길 수 있고 이때는 ParameterizedTypeReference(슈퍼 타입 토큰)을 사용하지 않아도 된다.
 
+응용: 스프링 4.0 이상
+- Generic 타입으로 정의된 필드를 autowired 하려고 할 때
 
+class GenericService<T> {
+	@Autowired
+	T t;
 
+	// 스프링 4.0 하위에서는 eraser에 의해 T가 Object로 변환
+	// 스프링 4.0 하위에서는 T를 주입받고 싶을 때 @PostConstruct 등을 이용했다.
+	/* 스프링 4.0 하위
+	@Autowired
+	ApplicationContext ac;
+	@PostConstruct
+	void init() {
+		// 수퍼 타입 토큰 기법을 사용하여 Class 정보를 알아낸다.
+		Class tType;
+		t = ac.getBean(tType); // Dependency LookUp
+	}
+	*/
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+@Component
+class MyService1 extends GenericService<MyBean1>{}
+@Component
+class MyService2 extends GenericService<MyBean2>{}
 
