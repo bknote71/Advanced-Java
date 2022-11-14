@@ -2,6 +2,7 @@ package supertypetoken;
 
 import org.junit.Test;
 
+import java.lang.reflect.ParameterizedType;
 import java.util.List;
 
 import static org.junit.Assert.*;
