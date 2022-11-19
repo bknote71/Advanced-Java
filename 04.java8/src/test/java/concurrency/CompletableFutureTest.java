@@ -185,7 +185,7 @@ public class CompletableFutureTest {
                 .supplyAsync(() -> {
                     try {
                         System.out.println(Thread.currentThread().getName() + " cf");
-                        Thread.sleep(500);
+                        Thread.sleep(100);
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
@@ -200,7 +200,8 @@ public class CompletableFutureTest {
                 })
                 .thenAccept(System.out::println);
 
-        Thread.sleep(300);
+        // 이거에 따라 cf1, cf2 작업 순서가 달라짐
+        // Thread.sleep(1000);
 
         // cf의 결과값은 언제나 몇번이라도 꺼내쓸 수 있다.
         final CompletableFuture<Void> cf2 = cf.handle((result, ex) -> {
@@ -218,26 +219,16 @@ public class CompletableFutureTest {
 
         // 스레드와 마찬가지로 CF 또한 작업이 완료되기 전에 메인 스레드(CF를 호출하는 스레드)가 종료되면 모든 작업이 종료된다.
         // 따라서 대기할 필요: join/get
-//        cf1.join();
-
-        // 매우 궁굼:
-        // - 나는 cf1 작업만 join()을 했는데 왜 cf2 작업까지 같이 기다릴까? 아니네 join() 하지도 않았는데 작업을 기다렸다. 하.. 너무 헷갈리네
-        // - 찍어보니 같은 쓰레드를 사용했다.
-        // 거기다가 cf2가 cf1보다 먼저 작업에 등록된다. (해보니까 항상 그렇게 되는데 작업에도 우선순위가 있는 것일까?)
-        // handle 이 exceptionally 보다 작업 등록에 우선순위가 있는 것인가?? 그리고 워크스틸링도 안한것 같은데...
-        // + 같은 "cf"에서 파생된 작업 cf1, cf2는 같은 작업 큐를 사용하는 것이고, 그래서 같은 스레드에게 할당하는 것인가?
-
-        // 다른 작업 큐(다른 스레드)를 사용하는 CF를 생성해보았다.
-        final CompletableFuture<Void> cf3 = CompletableFuture.supplyAsync(() -> {
-            try {
-                System.out.println(Thread.currentThread().getName() + " cf3");
-                Thread.sleep(4000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            return "cf3";
-        }).thenAccept(System.out::println);
-
+        // 중요: CF는 내부적으로 Stack을 사용한다.
+        // --> LIFO
+        // 여기서는 cf1이 cf2보다 먼저 스택에 들어가면 cf2가 먼저 실행된다.
+        // 물론 cf1하고 cf2가 스택에 있을 때
+        // cf2작업이 스택에 쌓이기전에 cf1을 처리하려고 poll 하면 cf1이 먼저 실행되는 것
+        // 스택에 당연한 이치
         cf1.join();
+        cf2.join();
+
+
+
     }
 }
