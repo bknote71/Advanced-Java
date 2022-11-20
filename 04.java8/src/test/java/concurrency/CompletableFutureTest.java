@@ -90,20 +90,24 @@ public class CompletableFutureTest {
     public void combine() {
         final CompletableFuture<String> cf1 = CompletableFuture
                 .supplyAsync(() -> {
+                    sleep(1000);
                     System.out.println(Thread.currentThread().getName());
                     return "hello";
                 });
 
         final CompletableFuture<String> cf2 = CompletableFuture
                 .supplyAsync(() -> {
+                    sleep(1000);
                     System.out.println(Thread.currentThread().getName());
                     return "aloha";
                 });
 
         // cf1.thenCombine(cf2, BiFunction): 연관관계가 없는 작업을 따로 비동기적으로 실행
         // 두 개의 관계가 없는 비동기적 작업의 결과를 받아서 조합한다.
-        cf1
-                .thenCombine(cf2, (s1, s2) -> s1 + " " + s2)
+        final CompletableFuture<String> cf3 = cf1
+                .thenCombine(cf2, (s1, s2) -> s1 + " " + s2);
+
+        cf3
                 .thenAccept(System.out::println);
     }
 
@@ -113,6 +117,7 @@ public class CompletableFutureTest {
     public void compose() {
         final CompletableFuture<String> cf1 = CompletableFuture
                 .supplyAsync(() -> {
+                    sleep(1000);
                     System.out.println(Thread.currentThread().getName());
                     return "hello";
                 });
@@ -230,5 +235,146 @@ public class CompletableFutureTest {
 
 
 
+    }
+
+    @Test
+    public void composite() throws InterruptedException {
+        final ExecutorService es = Executors.newFixedThreadPool(5);
+
+        final CompletableFuture<String> cf1 = CompletableFuture
+                .supplyAsync(() -> "hello", es)
+                .thenApplyAsync(s -> {
+                    try {
+                        System.out.println("before: " + Thread.currentThread().getName());
+                        Thread.sleep(3000);
+                        System.out.println(Thread.currentThread().getName());
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    return s;
+                }, es);
+
+        final CompletableFuture<Void> cf3 = cf1
+                .thenApplyAsync(s -> {
+                    try {
+                        Thread.sleep(3000);
+                        System.out.println(Thread.currentThread().getName());
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    return s;
+                }, es)
+                .thenApply(s -> {
+                    try {
+                        Thread.sleep(3000);
+                        System.out.println(Thread.currentThread().getName());
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    return s;
+                }).thenAccept(System.out::println);
+
+        Thread.sleep(1000);
+
+        System.out.println(Thread.currentThread().getName());
+
+        cf3.join();
+    }
+
+    @Test
+    public void composite2() {
+        final ExecutorService es = Executors.newFixedThreadPool(5);
+
+        final CompletableFuture<String> cf1 = CompletableFuture
+                .supplyAsync(() -> "hello", es)
+                .thenApplyAsync(s -> {
+                    try {
+                        System.out.println("before: " + Thread.currentThread().getName());
+                        Thread.sleep(3000);
+                        System.out.println("after: " + Thread.currentThread().getName());
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    return s;
+                }, es);
+
+        final CompletableFuture<Void> cf3 = cf1
+                .thenApplyAsync(s -> {
+                    try {
+                        Thread.sleep(3000);
+                        System.out.println(Thread.currentThread().getName());
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    return s;
+                }, es)
+                .thenApply(s -> {
+                    try {
+                        Thread.sleep(3000);
+                        System.out.println(Thread.currentThread().getName());
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    return s;
+                }).thenAccept(System.out::println);
+
+        final CompletableFuture<Void> cf4 = cf1
+                .thenApplyAsync(s -> {
+                    try {
+                        Thread.sleep(3000);
+                        System.out.println(Thread.currentThread().getName());
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    return s;
+                }, es)
+                .thenApply(s -> {
+                    try {
+                        Thread.sleep(3000);
+                        System.out.println(Thread.currentThread().getName());
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    return s;
+                }).thenAccept(System.out::println);
+
+
+        final CompletableFuture<Void> cf5 = cf1
+                .thenApplyAsync(s -> {
+                    try {
+                        Thread.sleep(3000);
+                        System.out.println(Thread.currentThread().getName());
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    return s;
+                }, es)
+                .thenApply(s -> {
+                    try {
+                        Thread.sleep(3000);
+                        System.out.println(Thread.currentThread().getName());
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    return s;
+                }).thenAccept(System.out::println);
+
+
+        sleep(100);
+        System.out.println("왜 안찍혀;;");
+        System.out.println(Thread.currentThread().getName());
+
+        cf3.join();
+        cf4.join();
+        cf5.join();
+    }
+
+
+    private void sleep(long time) {
+        try {
+            Thread.sleep(time);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }
