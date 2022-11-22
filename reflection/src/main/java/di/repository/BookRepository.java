@@ -1,7 +1,7 @@
 package di.repository;
 
 import di.Book;
-import di.MyRepository;
+import di.annotation.MyRepository;
 
 import java.util.HashMap;
 import java.util.Map;

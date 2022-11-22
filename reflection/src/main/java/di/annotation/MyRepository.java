@@ -1,11 +1,12 @@
-package di;
+package di.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target({ElementType.CONSTRUCTOR, ElementType.FIELD, ElementType.METHOD})
+@Dummy1
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Inject {
+@Target(ElementType.TYPE)
+public @interface MyRepository {
 }

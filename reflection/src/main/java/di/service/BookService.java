@@ -2,8 +2,8 @@ package di.service;
 
 import di.Book;
 import di.repository.BookRepository;
-import di.Inject;
-import di.MyService;
+import di.annotation.Inject;
+import di.annotation.MyService;
 
 @MyService
 public class BookService {

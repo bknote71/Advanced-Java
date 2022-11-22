@@ -15,4 +15,11 @@ public class Container {
     public <T> T getObject(Class<T> clazz) {
         return (T) this.map.get(clazz);
     }
+
+    @Override
+    public String toString() {
+        return "Container{" +
+                "map=" + map +
+                '}';
+    }
 }
