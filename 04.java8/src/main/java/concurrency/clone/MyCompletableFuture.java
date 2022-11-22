@@ -117,7 +117,7 @@ public class MyCompletableFuture<T> implements Future<T> {
     }
 
     private MyCompletableFuture<?> postFire(MyCompletableFuture<?> cf) {
-        // postComplete() 호출
+        // postComplete() 호출: stack에 있는 작업 실행
         if(stack != null) postComplete();
         return null;
     }
