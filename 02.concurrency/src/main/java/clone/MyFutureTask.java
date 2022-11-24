@@ -52,7 +52,7 @@ public class MyFutureTask<T> implements Runnable {
     // weakCAS 는 뭘까..?
     @Override
     public void run() {
-        if (state != NEW && !RUNNER.weakCompareAndSet(this, null, Thread.currentThread()))
+        if (state != NEW || !RUNNER.weakCompareAndSet(this, null, Thread.currentThread()))
             return;
         Callable<T> c = callable;
         if (c != null && state == NEW) {
@@ -117,21 +117,83 @@ public class MyFutureTask<T> implements Runnable {
     }
 
 
-    public T get() throws ExecutionException {
+    public T get() throws ExecutionException, InterruptedException {
         int s = state;
         // s <= COMPLETING: 대기
         if (s <= COMPLETING)
-            s = awaitDone();
+            s = awaitDone(false, 0);
         return report(s);
     }
 
-    private int awaitDone() {
-        return 0;
+    private int awaitDone(boolean timed, long nanos) throws InterruptedException {
+        long startTime = 0;
+        WaitNode d, q = null;
+        boolean queued = false;
+        for (;;) {
+            int s = state;
+            d = waiters;
+
+            if (s > COMPLETING) {
+                if (q != null) {
+                    q.thread = null; // 나중에 지워질 녀석
+                }
+                return s;
+            }
+            else if (s == COMPLETING)
+                Thread.yield(); // 이건 왜 하는 건지?
+            else if (Thread.interrupted()) {
+                removeWaiter(q);
+                throw new InterruptedException();
+            } else if (q == null) {
+                // WaitNode 생성
+                q = new WaitNode();
+            } else if (!queued)
+                queued = WAITERS.compareAndSet(this, q.next = d, q);
+            else if (timed) {
+                long parkNanos = 0;
+                if (startTime == 0) { // 첫번째 진입 >> startTime init
+                    startTime = System.nanoTime();
+                    parkNanos = nanos;
+                } else {
+                    long elapsed = System.nanoTime() - startTime;
+                    if (elapsed >= nanos) {
+                        removeWaiter(q);
+                        return state;
+                    }
+                    parkNanos = nanos - elapsed;
+                }
+                if (state < COMPLETING)
+                    LockSupport.parkNanos(this, parkNanos);
+            } else
+                LockSupport.park(this);
+        }
+
     }
 
+    public void removeWaiter(WaitNode q) {
+        // 인터럽트 or 시간 초과 ==> 해당하는 스레드를 null 처리해주면 된다.
+        // null 처리하고 해당 노드를 unlink 및 이전 노드는 next 노드를 봐야한다.
+        if (q != null) {
+            q.thread = null; // null 처리 완료,
 
-
-
+            // 1. find cur.thread == null;
+            // 2. prev << next (2가지 case: prev 가 null)
+            retry:
+            for (WaitNode prev = null, cur = waiters, next;
+                 cur != null; cur = next) {
+                next = cur.next;
+                if (cur.thread != null) {
+                    prev = cur;
+                } else if (prev != null) {
+                    prev.next = next;
+                    if (prev.thread == null)
+                        continue retry;
+                } else  // prev == null, cur == waiters
+                    if (!WAITERS.compareAndSet(this, cur, next))
+                        continue retry;
+            }
+        }
+    }
 
     private static class RunnableAdapter<T> implements Callable<T> {
         private final Runnable task;
@@ -161,18 +223,13 @@ public class MyFutureTask<T> implements Runnable {
     private static final VarHandle RUNNER;
     private static final VarHandle WAITERS;
     static {
-        final MethodHandles.Lookup l = MethodHandles.lookup();
         try {
+            final MethodHandles.Lookup l = MethodHandles.lookup();
             STATE = l.findVarHandle(MyFutureTask.class, "state", int.class);
-            RUNNER = l.findVarHandle(MyFutureTask.class, "state", Thread.class);
-            WAITERS = l.findVarHandle(MyFutureTask.class, "state", WaitNode.class);
+            RUNNER = l.findVarHandle(MyFutureTask.class, "runner", Thread.class);
+            WAITERS = l.findVarHandle(MyFutureTask.class, "waiters", WaitNode.class);
         } catch (ReflectiveOperationException e) {
-            e.printStackTrace();
+            throw new ExceptionInInitializerError(e);
         }
-    }
-
-    public static void main(String[] args) {
-        final MyFutureTask<String> stringMyFutureTask = new MyFutureTask<>(() -> "hello");
-
     }
 }
