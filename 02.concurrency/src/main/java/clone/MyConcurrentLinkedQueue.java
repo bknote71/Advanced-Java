@@ -80,8 +80,12 @@ public class MyConcurrentLinkedQueue<E> {
             q = p.next;
             E item;
             if ((item = p.item) != null && o.equals(item) && p.casItem(item, null)) {
-                if (q != null)
-                    NEXT.compareAndSet(pred, p, q);
+                if (q != null) {
+                    if (pred != null)
+                        NEXT.compareAndSet(pred, p, q);
+                    else
+                        HEAD.compareAndSet(this, p, q);
+                }
                 return true;
             }
         }
