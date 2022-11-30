@@ -2,7 +2,11 @@ package clone;
 
 import org.junit.Test;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+import java.util.Hashtable;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.SynchronousQueue;
 
 import static org.junit.Assert.*;
 
@@ -117,5 +121,4 @@ public class MyFutureTaskTest {
     int btoi(boolean b) {
         return Boolean.compare(b, false);
     }
-
 }
