@@ -2,6 +2,7 @@ package ftp;
 
 import ftp.cmd.Command;
 import ftp.cmd.CommandLine;
+import ftp.handler.FileServiceHandler;
 import ftp.handler.TransferParameterHandler;
 
 import java.io.*;
@@ -17,15 +18,20 @@ public class ServerPI implements Runnable, AutoCloseable {
     private final BufferedReader r;
     private final BufferedWriter w;
 
-    private final TransferParameterHandler transferParameterHandler;
+    private final TransferParameterHandler pHandler;
+    private final FileServiceHandler fHandler;
+
+    private int bufferSize = 64;
 
     public ServerPI(Socket socket) throws IOException {
         this.socket = socket;
         r = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         w = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-        transferParameterHandler = new TransferParameterHandler(this);
+        pHandler = new TransferParameterHandler(this);
+        fHandler = new FileServiceHandler(this);
 
-        transferParameterHandler.register();
+        pHandler.register();
+        fHandler.register();
     }
 
     public void sendResponse(int code, String message) {
@@ -36,6 +42,21 @@ public class ServerPI implements Runnable, AutoCloseable {
         } catch (IOException e) {
             e.printStackTrace();
             System.out.println("갑자기 연결이 끊김2?");
+        }
+    }
+
+    public void sendData(InputStream in) {
+        // in to data socket outStream
+        try (final Socket socket = pHandler.socket()) {
+            final OutputStream out = socket.getOutputStream();
+            byte[] buf = new byte[bufferSize];
+            int c;
+            while ((c = in.read(buf)) != -1) {
+                out.write(buf, 0, c);
+            }
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
@@ -55,12 +76,12 @@ public class ServerPI implements Runnable, AutoCloseable {
 
     public void acceptRequest() {
         try {
-            final String line = r.readLine().toUpperCase();
+            final String line = r.readLine();
             if (line.equals(" ")) // just enter \r\n
                 return;
 
             final int sp = line.indexOf(" ");
-            final String label = line.substring(0, sp);
+            final String label = line.substring(0, sp).toUpperCase();
             CommandLine cli = commandRepo.get(label);
             if (cli == null) {
                 sendResponse(520, "Unknown command");
@@ -69,13 +90,17 @@ public class ServerPI implements Runnable, AutoCloseable {
             processRequest(cli, sp != -1 || sp == line.length() ? line.substring(sp + 1) : null);
         } catch (IOException e) {
             e.printStackTrace();
-            System.out.println("갑자기 연결이 끊김1?"); // 연결이 끊기면 종료해야함 u know
+            try {
+                close();
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
         }
     }
 
 
     private void processRequest(CommandLine cli, String args) {
-        if (cli.auth() && !transferParameterHandler.isLoggedOn()) {
+        if (cli.auth() && !pHandler.isLoggedOn()) {
             sendResponse(530, "Please Login with USER and PASS.");
             return;
         }

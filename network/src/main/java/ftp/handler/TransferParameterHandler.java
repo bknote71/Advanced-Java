@@ -7,6 +7,7 @@ import ftp.cmd.NoArgsCommand;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.net.Socket;
 
 public class TransferParameterHandler {
 
@@ -29,6 +30,12 @@ public class TransferParameterHandler {
     public TransferParameterHandler(ServerPI pi) {
         this.pi = pi;
         this.authenticationManager = new BasicAuthenticationManager();
+    }
+
+    public Socket socket() throws IOException {
+        if (server == null)
+            throw new IllegalStateException("아직 데이터 서버 소켓이 연결되지 않았습니다.");
+        return server.accept();
     }
 
     public boolean isLoggedOn() {
@@ -54,7 +61,7 @@ public class TransferParameterHandler {
             pi.sendResponse(530, "Can't change from guest user.");
             return;
         }
-        this.username = username;
+        this.username = username.toUpperCase();
         // basic auth: password 요구
         pi.sendResponse(331, "Please specify the password.");
     }
@@ -68,7 +75,7 @@ public class TransferParameterHandler {
             pi.sendResponse(503, "Login with USER first.");
             return;
         }
-        boolean success = authenticationManager.authenticate(username, password);
+        boolean success = authenticationManager.authenticate(username, password.toUpperCase());
         if (success) {
             pi.sendResponse(230, "Login successful.");
             loggedOn = true;
@@ -79,7 +86,7 @@ public class TransferParameterHandler {
 
     private void pasv() {
         try {
-            server = new ServerSocket(0);
+            server = new ServerSocket(11111); // 0: 랜덤 포트, 11111: 일단 테스트하기 쉽게 정해놓음 ㅇㅇ
 
             final String host = server.getInetAddress().getHostAddress();
             final int port = server.getLocalPort();
@@ -92,10 +99,4 @@ public class TransferParameterHandler {
             e.printStackTrace();
         }
     }
-
-
-
-
-
-
 }
