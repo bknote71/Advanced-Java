@@ -1,6 +1,8 @@
 package ftp.handler;
 
 import ftp.ServerPI;
+import ftp.auth.AuthenticationManager;
+import ftp.auth.BasicAuthenticationManager;
 import ftp.cmd.NoArgsCommand;
 
 import java.io.IOException;
@@ -12,11 +14,26 @@ public class TransferParameterHandler {
 
     private ServerSocket server; // pasv 에서 생성
 
+    // auth: access control
+    private String username;
+    private String password;
+    private boolean loggedOn = false;
+    private AuthenticationManager authenticationManager;
+
     // transfer parameter: type, mode, stru, form
     String type; // A(ascii or eb..), I(binary), L(logical byte?)
     String mode; // stream, block, compressed
     String stru; // file, record, page
     String form; // type A: vertical format --> non-print, telnet control,
+
+    public TransferParameterHandler(ServerPI pi) {
+        this.pi = pi;
+        this.authenticationManager = new BasicAuthenticationManager();
+    }
+
+    public boolean isLoggedOn() {
+        return loggedOn;
+    }
 
     public boolean isAscii() {
         return type.equals("A");
@@ -28,6 +45,32 @@ public class TransferParameterHandler {
 
     public void register() {
         pi.registerCommand("PASV", (NoArgsCommand) this::pasv); // pasv는 this의 내부 상태에 따라 동작이 달라진다.
+    }
+
+    private void user(String username) {
+        if (loggedOn) {
+            pi.sendResponse(530, "Can't change from guest user. \r\n");
+            return;
+        }
+        this.username = username;
+        // basic auth: password 요구
+        pi.sendResponse(331, "Please specify the password.");
+    }
+
+    private void pass(String password) {
+        if (loggedOn) {
+            pi.sendResponse(230, "Already logged in. \r\n");
+            return;
+        }
+        if (username == null) {
+            pi.sendResponse(503, "Login with USER first.");
+            return;
+        }
+        boolean success = authenticationManager.authenticate(username, password);
+        if (success)
+            pi.sendResponse(230, "Login successful. \r\n");
+        else
+            pi.sendResponse(530, "Login incorrect. \r\n");
     }
 
     private void pasv() {

@@ -22,13 +22,13 @@ public class ServerPI implements Runnable, AutoCloseable {
         this.socket = socket;
         r = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         w = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-        transferParameterHandler = new TransferParameterHandler();
+        transferParameterHandler = new TransferParameterHandler(this);
     }
 
-    public void sendResponse(int code, String msg) {
+    public void sendResponse(int code, String message) {
         // response check
         try {
-            w.write(code + " " + msg + "\r\n");
+            w.write(code + " " + message + "\r\n");
             w.flush();
         } catch (IOException e) {
             e.printStackTrace();
