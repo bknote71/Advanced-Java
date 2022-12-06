@@ -44,9 +44,9 @@ public class TransferParameterHandler {
     }
 
     public void register() {
-        pi.registerCommand("USER", this::user);
-        pi.registerCommand("PASS", this::pass);
-        pi.registerCommand("PASV", (NoArgsCommand) this::pasv); // pasv는 this의 내부 상태에 따라 동작이 달라진다.
+        pi.registerCommand("USER", this::user, false);
+        pi.registerCommand("PASS", this::pass, false);
+        pi.registerCommand("PASV", (NoArgsCommand) this::pasv, true); // pasv는 this의 내부 상태에 따라 동작이 달라진다.
     }
 
     private void user(String username) {
@@ -69,8 +69,10 @@ public class TransferParameterHandler {
             return;
         }
         boolean success = authenticationManager.authenticate(username, password);
-        if (success)
+        if (success) {
             pi.sendResponse(230, "Login successful.");
+            loggedOn = true;
+        }
         else
             pi.sendResponse(530, "Login incorrect.");
     }
@@ -82,7 +84,7 @@ public class TransferParameterHandler {
             final String host = server.getInetAddress().getHostAddress();
             final int port = server.getLocalPort();
 
-            final String address = host.replaceAll(".", ",");
+            final String address = host.replaceAll("[.]", ",");
             final String adPort = port / 256 + "," + port % 256;
 
             pi.sendResponse(227, "(" + address + "," + adPort + ")");

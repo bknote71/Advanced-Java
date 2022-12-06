@@ -1,6 +1,7 @@
 package ftp;
 
 import ftp.cmd.Command;
+import ftp.cmd.CommandLine;
 import ftp.handler.TransferParameterHandler;
 
 import java.io.*;
@@ -10,7 +11,7 @@ import java.util.Map;
 
 public class ServerPI implements Runnable, AutoCloseable {
 
-    private final Map<String, Command> commandRepo = new HashMap<>();
+    private final Map<String, CommandLine> commandRepo = new HashMap<>();
 
     private final Socket socket;
     private final BufferedReader r;
@@ -60,25 +61,30 @@ public class ServerPI implements Runnable, AutoCloseable {
 
             final int sp = line.indexOf(" ");
             final String label = line.substring(0, sp);
-            Command command = commandRepo.get(label);
-            if (command == null) {
+            CommandLine cli = commandRepo.get(label);
+            if (cli == null) {
                 sendResponse(520, "Unknown command");
                 return;
             }
-            processRequest(command, sp != -1 || sp == line.length() ? line.substring(sp + 1) : null);
+            processRequest(cli, sp != -1 || sp == line.length() ? line.substring(sp + 1) : null);
         } catch (IOException e) {
             e.printStackTrace();
-            System.out.println("갑자기 연결이 끊김1?");
+            System.out.println("갑자기 연결이 끊김1?"); // 연결이 끊기면 종료해야함 u know
         }
     }
 
 
-    private void processRequest(Command cmd, String args) {
+    private void processRequest(CommandLine cli, String args) {
+        if (cli.auth() && !transferParameterHandler.isLoggedOn()) {
+            sendResponse(530, "Please Login with USER and PASS.");
+            return;
+        }
+        Command cmd = cli.command();
         cmd.execute(args);
     }
 
-    public void registerCommand(String label, Command cmd) {
-        this.commandRepo.put(label, cmd);
+    public void registerCommand(String label, Command cmd, boolean auth) {
+        this.commandRepo.put(label, new CommandLine(cmd, auth));
     }
 
     @Override

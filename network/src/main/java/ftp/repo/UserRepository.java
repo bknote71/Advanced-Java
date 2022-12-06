@@ -14,8 +14,8 @@ public class UserRepository {
     }
 
     static {
-        repo.put("ftp", "ftp");
-        repo.put("user", "user");
+        repo.put("FTP", "FTP");
+        repo.put("USER", "USER");
     }
 
     public String get(String key) {

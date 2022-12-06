@@ -8,6 +8,7 @@ public class BasicAuthenticationManager implements AuthenticationManager{
     @Override
     public boolean authenticate(String username, String password) {
         final String trimmedUsername = username.trim();
+        System.out.println(trimmedUsername);
         return userRepository.get(trimmedUsername) != null ? true : false;
     }
 }
