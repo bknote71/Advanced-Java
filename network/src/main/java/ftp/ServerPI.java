@@ -23,6 +23,8 @@ public class ServerPI implements Runnable, AutoCloseable {
         r = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         w = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
         transferParameterHandler = new TransferParameterHandler(this);
+
+        transferParameterHandler.register();
     }
 
     public void sendResponse(int code, String message) {
@@ -32,6 +34,7 @@ public class ServerPI implements Runnable, AutoCloseable {
             w.flush();
         } catch (IOException e) {
             e.printStackTrace();
+            System.out.println("갑자기 연결이 끊김2?");
         }
     }
 
@@ -52,7 +55,7 @@ public class ServerPI implements Runnable, AutoCloseable {
     public void acceptRequest() {
         try {
             final String line = r.readLine().toUpperCase();
-            if (line.isEmpty())
+            if (line.equals(" ")) // just enter \r\n
                 return;
 
             final int sp = line.indexOf(" ");
@@ -65,6 +68,7 @@ public class ServerPI implements Runnable, AutoCloseable {
             processRequest(command, sp != -1 || sp == line.length() ? line.substring(sp + 1) : null);
         } catch (IOException e) {
             e.printStackTrace();
+            System.out.println("갑자기 연결이 끊김1?");
         }
     }
 

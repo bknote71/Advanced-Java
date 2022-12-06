@@ -44,12 +44,14 @@ public class TransferParameterHandler {
     }
 
     public void register() {
+        pi.registerCommand("USER", this::user);
+        pi.registerCommand("PASS", this::pass);
         pi.registerCommand("PASV", (NoArgsCommand) this::pasv); // pasv는 this의 내부 상태에 따라 동작이 달라진다.
     }
 
     private void user(String username) {
         if (loggedOn) {
-            pi.sendResponse(530, "Can't change from guest user. \r\n");
+            pi.sendResponse(530, "Can't change from guest user.");
             return;
         }
         this.username = username;
@@ -59,7 +61,7 @@ public class TransferParameterHandler {
 
     private void pass(String password) {
         if (loggedOn) {
-            pi.sendResponse(230, "Already logged in. \r\n");
+            pi.sendResponse(230, "Already logged in.");
             return;
         }
         if (username == null) {
@@ -68,9 +70,9 @@ public class TransferParameterHandler {
         }
         boolean success = authenticationManager.authenticate(username, password);
         if (success)
-            pi.sendResponse(230, "Login successful. \r\n");
+            pi.sendResponse(230, "Login successful.");
         else
-            pi.sendResponse(530, "Login incorrect. \r\n");
+            pi.sendResponse(530, "Login incorrect.");
     }
 
     private void pasv() {
